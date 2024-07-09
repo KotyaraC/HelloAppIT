@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>User Management</title>
+</head>
+<body>
+    <h2>Users List</h2>
+    <div>
+        <input type="hidden" id="userId" />
+        <p>
+            Name:<br />
+            <input id="userName" />
+        </p>
+        <p>
+            Age:<br />
+            <input id="userAge" type="number" />
+        </p>
+        <p>
+            <button id="saveBtn">Save</button>
+            <button id="resetBtn">Reset</button>
+        </p>
+    </div>
+    <table>
+        <thead>
+            <tr><th>Name</th><th>Age</th><th></th></tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const userIdInput = document.getElementById("userId");
+            const userNameInput = document.getElementById("userName");
+            const userAgeInput = document.getElementById("userAge");
+            const saveBtn = document.getElementById("saveBtn");
+            const resetBtn = document.getElementById("resetBtn");
+            const userTableBody = document.querySelector("table tbody");
+            let users = [];
+
+            async function fetchUsers() {
+                const response = await fetch("/api/users");
+                users = await response.json();
+                renderUsers();
+            }
+
+            function renderUsers() {
+                userTableBody.innerHTML = users.map(user => `
+                        <tr>
+                            <td>${user.name}</td>
+                            <td>${user.age}</td>
+                            <td>
+                                <button onclick="editUser('${user.id}')">Edit</button>
+                                <button onclick="deleteUser('${user.id}')">Delete</button>
+                            </td>
+                        </tr>
+                    `).join("");
+            }
+
+            async function saveUser() {
+                const userId = userIdInput.value;
+                const userName = userNameInput.value;
+                const userAge = userAgeInput.value;
+
+                if (!userName || !userAge) {
+                    alert("Please fill out all fields");
+                    return;
+                }
+
+                const user = { id: userId, name: userName, age: parseInt(userAge, 10) };
+
+                if (userId) {
+                    // Update user
+                    await fetch("/api/users", {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify(user)
+                    });
+                } else {
+                    // Create new user
+                    await fetch("/api/users", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify(user)
+                    });
+                }
+
+                resetForm();
+                fetchUsers();
+            }
+
+            function resetForm() {
+                userIdInput.value = "";
+                userNameInput.value = "";
+                userAgeInput.value = "";
+            }
+
+            window.editUser = function (id) {
+                const user = users.find(u => u.id === id);
+                if (user) {
+                    userIdInput.value = user.id;
+                    userNameInput.value = user.name;
+                    userAgeInput.value = user.age;
+                }
+            }
+
+            window.deleteUser = async function (id) {
+                await fetch(`/api/users/${id}`, {
+                    method: "DELETE"
+                });
+                fetchUsers();
+            }
+
+            saveBtn.addEventListener("click", saveUser);
+            resetBtn.addEventListener("click", resetForm);
+
+            fetchUsers();
+        });
+    </script>
+</body>
+</html>
